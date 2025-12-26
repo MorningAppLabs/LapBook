@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LapBook - eBook Reader</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- Main Application Container -->
+  <div id="app">
+    
+    <!-- Top Toolbar -->
+    <div id="toolbar">
+      <!-- Left Section: File Controls -->
+      <div class="toolbar-section">
+        <button id="backToLibraryBtn" class="btn hidden" title="Back to library">
+          <span class="icon">‹</span> Library
+        </button>
+        <button id="openBtn" class="btn" title="Open EPUB or PDF file (Ctrl+O)">
+          <span class="icon">+</span> Open Book
+        </button>
+      </div>
+
+      <!-- Center Section: Navigation Controls -->
+      <div class="toolbar-section toolbar-center">
+        <button id="prevBtn" class="btn" title="Previous page (←)">
+          <span class="icon">‹</span>
+        </button>
+        <button id="nextBtn" class="btn" title="Next page (→)">
+          <span class="icon">›</span>
+        </button>
+        <button id="tocBtn" class="btn" title="Table of Contents">
+          <span class="icon">☰</span> Contents
+        </button>
+        <button id="searchBtn" class="btn" title="Search in book">
+          <span class="icon">⌕</span> Search
+        </button>
+        
+        <!-- Zoom controls (PDF only) -->
+        <button id="zoomOutBtn" class="btn" title="Zoom out (-)">
+          <span class="icon">−</span>
+        </button>
+        <button id="zoomInBtn" class="btn" title="Zoom in (+)">
+          <span class="icon">+</span>
+        </button>
+        <button id="zoomResetBtn" class="btn btn-small" title="Reset zoom (0)">
+          <span class="icon">100%</span>
+        </button>
+        <button id="zoomFitBtn" class="btn btn-small" title="Fit to page width (F)">
+          <span class="icon">⇔</span>
+        </button>
+      </div>
+
+      <!-- Right Section: Quick Settings -->
+      <div class="toolbar-section">
+        <div class="control-group" id="fontSizeControlGroup">
+          <button id="fontDecreaseBtn" class="btn btn-small" title="Decrease font size">A-</button>
+          <button id="fontIncreaseBtn" class="btn btn-small" title="Increase font size">A+</button>
+        </div>
+
+        <div class="control-group">
+          <label>Theme:</label>
+          <select id="themeSelect" class="select">
+            <option value="white">Light</option>
+            <option value="sepia">Sepia</option>
+            <option value="kindle">Nottingham Green</option>
+            <option value="blue">Blue</option>
+            <option value="gray">Gray</option>
+            <option value="dark">Dark</option>
+          </select>
+        </div>
+
+        <button id="settingsBtn" class="btn" title="More settings">
+          <span class="icon">⚙</span>
+        </button>
+        
+        <button id="fullscreenBtn" class="btn" title="Toggle fullscreen (F11)">
+          <span class="icon">⛶</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Main Content Area -->
+    <div id="mainContent">
+      <!-- File type indicator -->
+      <div id="fileTypeIndicator" class="file-type-indicator hidden">
+        <span class="file-type-icon"></span>
+        <span class="file-type-text"></span>
+      </div>
+      
+      <!-- Table of Contents Sidebar (hidden by default) -->
+      <div id="tocPanel" class="side-panel hidden">
+        <div class="panel-header">
+          <h3>Table of Contents</h3>
+          <button id="closeTocBtn" class="btn-close">✕</button>
+        </div>
+        <div id="tocList" class="panel-content">
+          <!-- TOC items will be inserted here -->
+        </div>
+      </div>
+
+      <!-- Search Panel (hidden by default) -->
+      <div id="searchPanel" class="side-panel hidden">
+        <div class="panel-header">
+          <h3>Search</h3>
+          <button id="closeSearchBtn" class="btn-close">✕</button>
+        </div>
+        <div class="panel-content">
+          <div class="search-input-container">
+            <input type="text" id="searchInput" placeholder="Enter search text..." />
+            <button id="searchExecuteBtn" class="btn">Search</button>
+          </div>
+          <div id="searchNavigation" class="search-navigation hidden">
+            <button id="searchPrevBtn" class="btn btn-small" title="Previous result">◄</button>
+            <span id="searchCounter">0 / 0</span>
+            <button id="searchNextBtn" class="btn btn-small" title="Next result">►</button>
+            <button id="clearSearchBtn" class="btn btn-small" title="Clear search">✕</button>
+          </div>
+          <div id="searchResults">
+            <!-- Search results will be displayed here -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Highlights Panel (hidden by default) -->
+      <div id="highlightsPanel" class="side-panel hidden">
+        <div class="panel-header">
+          <h3>Highlights & Notes</h3>
+          <button id="closeHighlightsBtn" class="btn-close">✕</button>
+        </div>
+        <div class="panel-content">
+          <div id="highlightsList">
+            <!-- Highlight items will be displayed here -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Settings Panel (hidden by default) -->
+      <div id="settingsPanel" class="side-panel hidden">
+        <div class="panel-header">
+          <h3>Settings</h3>
+          <button id="closeSettingsBtn" class="btn-close">✕</button>
+        </div>
+        <div class="panel-content settings-content">
+          
+          <h4 style="margin-top: 0; margin-bottom: 12px; color: var(--color-text);">Reading Preferences</h4>
+          
+          <div class="setting-item">
+            <label for="fontSelect">Font Family:</label>
+            <select id="fontSelect" class="select" style="width: 100%;">
+              <option value="serif">Serif</option>
+              <option value="sans-serif">Sans Serif</option>
+              <option value="'Georgia', serif">Georgia</option>
+              <option value="'Palatino Linotype', 'Book Antiqua', Palatino, serif">Palatino</option>
+              <option value="'Times New Roman', Times, serif">Times New Roman</option>
+              <option value="'Arial', Helvetica, sans-serif">Arial</option>
+              <option value="'Verdana', Geneva, sans-serif">Verdana</option>
+              <option value="'Trebuchet MS', sans-serif">Trebuchet</option>
+              <option value="'Comic Sans MS', cursive">Comic Sans</option>
+              <option value="'Courier New', Courier, monospace">Courier</option>
+              <option value="monospace">Monospace</option>
+            </select>
+          </div>
+          
+          <div class="setting-item">
+            <label for="lineSpacingSlider">Line Spacing:</label>
+            <input type="range" id="lineSpacingSlider" min="1.0" max="2.5" step="0.1" value="1.6" />
+            <span id="lineSpacingValue">1.6</span>
+          </div>
+
+          <div class="setting-item">
+            <label for="marginSlider">Margins:</label>
+            <input type="range" id="marginSlider" min="20" max="100" step="10" value="50" />
+            <span id="marginValue">50px</span>
+          </div>
+          
+          <h4 style="margin-top: 20px; margin-bottom: 12px; color: var(--color-text);">Annotations (EPUB only)</h4>
+          
+          <div class="setting-item">
+            <button id="highlightBtn" class="btn" style="width: 100%;" title="Highlight selected text">
+              <span class="icon">✎</span> Create Highlight
+            </button>
+          </div>
+          
+          <div class="setting-item">
+            <button id="viewHighlightsBtn" class="btn" style="width: 100%;" title="View all highlights">
+              <span class="icon">☰</span> View All Highlights
+            </button>
+          </div>
+          
+          <h4 style="margin-top: 20px; margin-bottom: 12px; color: var(--color-text);">Advanced</h4>
+
+          <div class="setting-item">
+            <label>
+              <input type="checkbox" id="mouseWheelToggle" checked />
+              Enable mouse wheel page navigation
+            </label>
+          </div>
+
+          <div class="setting-item">
+            <label>
+              <input type="checkbox" id="animationToggle" checked />
+              Enable page turn animations
+            </label>
+          </div>
+
+          <div class="setting-item">
+            <button id="resetSettingsBtn" class="btn">Reset to Defaults</button>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Book Reader Area -->
+      <div id="readerArea">
+        <!-- Library view (shown by default) -->
+        <div id="libraryView">
+          <div class="library-header">
+            <div class="library-title">
+              <h1><span class="header-icon">📚</span> My Library</h1>
+              <p class="library-subtitle">Your collection of eBooks</p>
+            </div>
+            <div class="library-actions">
+              <button id="libraryViewToggle" class="btn btn-icon" title="Toggle grid/list view">
+                <span id="viewIcon">⊞</span>
+              </button>
+              <button id="addBookBtn" class="btn">+ Add Book</button>
+            </div>
+          </div>
+          <div id="libraryGrid" class="library-grid">
+            <!-- Book cards will be inserted here -->
+          </div>
+          <div id="libraryEmpty" class="library-empty hidden">
+            <div class="empty-state">
+              <div class="empty-icon">📚</div>
+              <h2>Your library is empty</h2>
+              <p>Add books to get started</p>
+              <button id="addBookBtnEmpty" class="btn btn-large">+ Add Your First Book</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Welcome screen (hidden when library shown) -->
+        <div id="welcomeScreen" class="hidden">
+          <div class="welcome-content">
+            <h1><span class="welcome-icon">📚</span> Welcome to LapBook</h1>
+            <p>Your offline desktop eBook reader</p>
+            <button id="welcomeOpenBtn" class="btn btn-large">Open an eBook (EPUB or PDF)</button>
+            <p class="hint">or use <kbd>Ctrl+O</kbd></p>
+          </div>
+        </div>
+
+        <!-- Book viewer container (epub.js will render here) -->
+        <div id="viewer" class="hidden"></div>
+        
+        <!-- PDF Viewer (for PDF files) -->
+        <div id="pdfViewer" class="hidden">
+          <div id="pdfLimitationsNotice" class="pdf-limitations-notice">
+            <span>⚠️ PDF Mode: Limited features - No text reflow, annotations, or font controls. Zoom and search available.</span>
+            <button id="closePdfNoticeBtn" class="close-notice-btn" title="Close this notice">✕</button>
+          </div>
+          <div class="pdf-container">
+            <canvas id="pdfCanvas"></canvas>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Status Bar (optional - for displaying reading progress, etc.) -->
+    <div id="statusBar">
+      <div id="bookTitle">No book loaded</div>
+      <div id="pageInfo"></div>
+    </div>
+
+  </div>
+
+  <!-- Highlight Dialog Modal -->
+  <div id="highlightDialog" class="modal hidden">
+    <div class="modal-content">
+      <h3>Add Highlight</h3>
+      <div class="highlight-color-picker">
+        <label>Choose color:</label>
+        <div class="color-options">
+          <button class="color-btn" data-color="yellow" style="background: #ffeb3b;" title="Yellow"></button>
+          <button class="color-btn" data-color="green" style="background: #8bc34a;" title="Green"></button>
+          <button class="color-btn" data-color="blue" style="background: #64b5f6;" title="Blue"></button>
+          <button class="color-btn" data-color="pink" style="background: #f48fb1;" title="Pink"></button>
+          <button class="color-btn" data-color="orange" style="background: #ffb74d;" title="Orange"></button>
+        </div>
+      </div>
+      <div class="highlight-note">
+        <label>Add note (optional):</label>
+        <textarea id="highlightNoteInput" placeholder="Enter your note here..." rows="4"></textarea>
+      </div>
+      <div class="modal-buttons">
+        <button id="saveHighlightBtn" class="btn btn-primary">Save Highlight</button>
+        <button id="cancelHighlightBtn" class="btn">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Text Selection Context Menu -->
+  <div id="textContextMenu" class="context-menu hidden">
+    <button id="contextHighlightBtn" class="context-menu-item">
+      <span class="icon">✨</span> Highlight
+    </button>
+    <button id="contextNoteBtn" class="context-menu-item">
+      <span class="icon">📝</span> Add Note
+    </button>
+    <div class="context-menu-divider"></div>
+    <button id="contextDefineBtn" class="context-menu-item">
+      <span class="icon">📖</span> Define
+    </button>
+  </div>
+
+  <!-- Dictionary Modal -->
+  <div id="dictionaryDialog" class="modal hidden">
+    <div class="modal-content" style="max-width: 600px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <h3 id="dictionaryWord" style="margin: 0;">Word</h3>
+        <button id="closeDictionaryBtn" class="btn-close">✕</button>
+      </div>
+      <div id="dictionaryContent" style="max-height: 400px; overflow-y: auto;">
+        <div class="loading">Loading definition...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- About LapBook Modal -->
+  <div id="aboutDialog" class="modal hidden">
+    <div class="modal-content" style="max-width: 600px;">
+      <div style="text-align: center; padding: 20px;">
+        <h2 style="margin-bottom: 10px; font-weight: 300; font-size: 36px;">LapBook</h2>
+        <p style="opacity: 0.7; margin-bottom: 24px;">Version <span id="appVersion">1.0.0</span></p>
+        
+        <div style="background: var(--color-bg-secondary); padding: 24px; border-radius: 12px; margin-bottom: 24px;">
+          <p style="line-height: 1.8; margin-bottom: 16px;">
+            A beautiful, offline desktop eBook reader for EPUB and PDF files. 
+            Experience distraction-free reading with powerful features and elegant design.
+          </p>
+          <p style="font-weight: 600; color: var(--color-primary); margin-bottom: 8px;">
+            Developed by Morning App Labs
+          </p>
+          <div style="display: flex; gap: 16px; justify-content: center; margin-top: 16px;">
+            <a href="#" id="visitXLink" class="social-link" title="Visit us on X">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+              </svg>
+            </a>
+            <a href="#" id="visitInstagramLink" class="social-link" title="Visit us on Instagram">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
+              </svg>
+            </a>
+          </div>
+        </div>
+        
+        <button id="supportDevBtn" class="btn btn-primary" style="display: inline-flex; align-items: center; gap: 8px; margin-bottom: 16px;">
+          Support the Developer
+        </button>
+        
+        <div style="margin-top: 24px;">
+          <button id="closeAboutBtn" class="btn">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Changelog Modal -->
+  <div id="changelogDialog" class="modal hidden">
+    <div class="modal-content" style="max-width: 700px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h3 style="margin: 0;">What's New in LapBook</h3>
+        <button id="closeChangelogBtn" class="btn-close">✕</button>
+      </div>
+      <div id="changelogContent" style="max-height: 500px; overflow-y: auto; padding-right: 8px;">
+        <div class="loading">Loading changelog...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Privacy Policy Modal -->
+  <div id="privacyDialog" class="modal hidden">
+    <div class="modal-content" style="max-width: 700px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h3 style="margin: 0;">Privacy Policy</h3>
+        <button id="closePrivacyBtn" class="btn-close">✕</button>
+      </div>
+      <div id="privacyContent" style="max-height: 500px; overflow-y: auto; padding-right: 8px;">
+        <div class="loading">Loading privacy policy...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Terms of Use Modal -->
+  <div id="termsDialog" class="modal hidden">
+    <div class="modal-content" style="max-width: 700px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h3 style="margin: 0;">Terms of Use</h3>
+        <button id="closeTermsBtn" class="btn-close">✕</button>
+      </div>
+      <div id="termsContent" style="max-height: 500px; overflow-y: auto; padding-right: 8px;">
+        <div class="loading">Loading terms of use...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Book Metadata Dialog -->
+  <div id="editBookDialog" class="modal hidden">
+    <div class="modal-content">
+      <h3>Edit Book Information</h3>
+      <div style="margin-bottom: 16px;">
+        <label style="display: block; margin-bottom: 4px; font-weight: 500;">Title:</label>
+        <input type="text" id="editBookTitle" class="text-input" placeholder="Book title" style="width: 100%; padding: 8px; border: 1px solid var(--color-border); border-radius: 4px; background: var(--color-bg); color: var(--color-text);">
+      </div>
+      <div style="margin-bottom: 16px;">
+        <label style="display: block; margin-bottom: 4px; font-weight: 500;">Author:</label>
+        <input type="text" id="editBookAuthor" class="text-input" placeholder="Author name" style="width: 100%; padding: 8px; border: 1px solid var(--color-border); border-radius: 4px; background: var(--color-bg); color: var(--color-text);">
+      </div>
+      <div class="modal-buttons">
+        <button id="saveEditBookBtn" class="btn btn-primary">Save</button>
+        <button id="cancelEditBookBtn" class="btn">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CRITICAL: Load JSZip BEFORE epub.js (epub.js requires it to unpack EPUB files) -->
+  <script src="../node_modules/jszip/dist/jszip.min.js"></script>
+  
+  <!-- Load epub.js library -->
+  <script src="../node_modules/epubjs/dist/epub.min.js"></script>
+  
+  <!-- Load settings manager -->
+  <script src="../settings.js"></script>
+  
+  <!-- Load main renderer script (PDF.js loaded lazily) -->
+  <script src="renderer.js"></script>
+</body>
+</html>
