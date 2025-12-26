@@ -1,0 +1,64 @@
+{
+  "name": "lapbook",
+  "version": "1.0.0",
+  "description": "A clean, offline Windows desktop eBook reader for EPUB files",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder build --win --publish never",
+    "build:dir": "electron-builder build --win --dir"
+  },
+  "keywords": [
+    "ebook",
+    "epub",
+    "reader",
+    "electron"
+  ],
+  "author": "Morning App Labs",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.9.1"
+  },
+  "dependencies": {
+    "epubjs": "^0.3.93",
+    "jszip": "^3.10.1",
+    "pdfjs-dist": "^3.11.174"
+  },
+  "build": {
+    "appId": "com.lapbook.reader",
+    "productName": "LapBook",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "settings.js",
+      "updater.js",
+      "CHANGELOG.md",
+      "PRIVACY.md",
+      "TERMS.md",
+      "LapBook Icon.png",
+      "renderer/**/*",
+      "node_modules/**/*"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "LapBook Icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    }
+  }
+}
