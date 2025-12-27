@@ -167,15 +167,43 @@
             <label for="lineSpacingSlider">Line Spacing:</label>
             <input type="range" id="lineSpacingSlider" min="1.0" max="2.5" step="0.1" value="1.6" />
             <span id="lineSpacingValue">1.6</span>
+            <button class="btn-reset-inline" id="resetLineSpacingBtn" title="Reset to default">↻</button>
           </div>
 
           <div class="setting-item">
             <label for="marginSlider">Margins:</label>
             <input type="range" id="marginSlider" min="20" max="100" step="10" value="50" />
             <span id="marginValue">50px</span>
+            <button class="btn-reset-inline" id="resetMarginBtn" title="Reset to default">↻</button>
+          </div>
+          
+          <div class="setting-item">
+            <label for="columnLayoutSelect">Text Columns:</label>
+            <select id="columnLayoutSelect" class="select" style="width: 100%;">
+              <option value="single">Single Column</option>
+              <option value="double">Double Column</option>
+            </select>
+            <button class="btn-reset-inline" id="resetColumnLayoutBtn" title="Reset to default">↻</button>
+          </div>
+          
+          <div class="setting-item">
+            <label for="textAlignmentSelect">Text Alignment:</label>
+            <select id="textAlignmentSelect" class="select" style="width: 100%;">
+              <option value="left">Left</option>
+              <option value="right">Right</option>
+              <option value="justify">Justify</option>
+            </select>
+            <button class="btn-reset-inline" id="resetAlignmentBtn" title="Reset to default">↻</button>
           </div>
           
           <h4 style="margin-top: 20px; margin-bottom: 12px; color: var(--color-text);">Annotations (EPUB only)</h4>
+          
+          <div class="annotation-info" style="background: var(--color-bg-secondary); padding: 12px; border-radius: 8px; margin-bottom: 16px; font-size: 13px; line-height: 1.6;">
+            <strong>📚 Where are my highlights saved?</strong><br>
+            All highlights and notes are saved locally on your device at:<br>
+            <code style="background: rgba(0,0,0,0.1); padding: 2px 6px; border-radius: 4px; font-size: 11px;">%APPDATA%\lapbook\highlights\</code><br>
+            <em style="opacity: 0.8; font-size: 12px;">Note: Removing a book from your library will NOT delete its highlights.</em>
+          </div>
           
           <div class="setting-item">
             <button id="highlightBtn" class="btn" style="width: 100%;" title="Highlight selected text">
@@ -205,8 +233,8 @@
             </label>
           </div>
 
-          <div class="setting-item">
-            <button id="resetSettingsBtn" class="btn">Reset to Defaults</button>
+          <div class="setting-item" style="margin-top: 20px;">
+            <button id="resetAllSettingsBtn" class="btn" style="width: 100%; background: var(--color-danger, #dc3545); color: white;">Reset All to Defaults</button>
           </div>
 
         </div>
@@ -252,7 +280,15 @@
         </div>
 
         <!-- Book viewer container (epub.js will render here) -->
-        <div id="viewer" class="hidden"></div>
+        <div id="viewer" class="hidden">
+          <!-- Full-height navigation arrows -->
+          <button id="navArrowLeft" class="nav-arrow nav-arrow-left hidden" title="Previous page (← or swipe right)">
+            <span>‹</span>
+          </button>
+          <button id="navArrowRight" class="nav-arrow nav-arrow-right hidden" title="Next page (→ or swipe left)">
+            <span>›</span>
+          </button>
+        </div>
         
         <!-- PDF Viewer (for PDF files) -->
         <div id="pdfViewer" class="hidden">

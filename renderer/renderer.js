@@ -215,9 +215,17 @@ function setupEventListeners() {
   // Settings
   document.getElementById('lineSpacingSlider').addEventListener('input', changeLineSpacing);
   document.getElementById('marginSlider').addEventListener('input', changeMargins);
+  document.getElementById('columnLayoutSelect').addEventListener('change', changeColumnLayout);
+  document.getElementById('textAlignmentSelect').addEventListener('change', changeTextAlignment);
   document.getElementById('mouseWheelToggle').addEventListener('change', toggleMouseWheelNav);
   document.getElementById('animationToggle').addEventListener('change', togglePageAnimation);
-  document.getElementById('resetSettingsBtn').addEventListener('click', resetSettings);
+  document.getElementById('resetAllSettingsBtn').addEventListener('click', resetAllSettings);
+  
+  // Individual reset buttons
+  document.getElementById('resetLineSpacingBtn').addEventListener('click', () => resetIndividualSetting('lineSpacing'));
+  document.getElementById('resetMarginBtn').addEventListener('click', () => resetIndividualSetting('marginSize'));
+  document.getElementById('resetColumnLayoutBtn').addEventListener('click', () => resetIndividualSetting('columnLayout'));
+  document.getElementById('resetAlignmentBtn').addEventListener('click', () => resetIndividualSetting('textAlignment'));
   
   // Search
   document.getElementById('searchExecuteBtn').addEventListener('click', executeSearch);
@@ -286,6 +294,17 @@ function setupEventListeners() {
     if (pdfViewer) pdfViewer.fitToPage();
   });
   
+  // Navigation arrows
+  document.getElementById('navArrowLeft').addEventListener('click', () => {
+    if (rendition) rendition.prev();
+  });
+  document.getElementById('navArrowRight').addEventListener('click', () => {
+    if (rendition) rendition.next();
+  });
+  
+  // Touch gestures for swipe navigation
+  setupTouchGestures();
+  
   // About and Changelog dialogs
   document.getElementById('closeAboutBtn').addEventListener('click', () => {
     document.getElementById('aboutDialog').classList.add('hidden');
@@ -316,6 +335,45 @@ function setupEventListeners() {
     e.preventDefault();
     window.electronAPI.openExternal('https://instagram.com/morningapplabs');
   });
+}
+
+/**
+ * Setup touch gestures for swipe navigation
+ */
+function setupTouchGestures() {
+  const viewer = document.getElementById('viewer');
+  let touchStartX = 0;
+  let touchStartY = 0;
+  let touchEndX = 0;
+  let touchEndY = 0;
+  
+  viewer.addEventListener('touchstart', (e) => {
+    touchStartX = e.changedTouches[0].screenX;
+    touchStartY = e.changedTouches[0].screenY;
+  }, { passive: true });
+  
+  viewer.addEventListener('touchend', (e) => {
+    touchEndX = e.changedTouches[0].screenX;
+    touchEndY = e.changedTouches[0].screenY;
+    handleSwipeGesture();
+  }, { passive: true });
+  
+  function handleSwipeGesture() {
+    const deltaX = touchEndX - touchStartX;
+    const deltaY = touchEndY - touchStartY;
+    const minSwipeDistance = 50; // Minimum distance for a swipe
+    
+    // Check if horizontal swipe is larger than vertical
+    if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > minSwipeDistance) {
+      if (deltaX > 0) {
+        // Swipe right - go to previous page
+        if (rendition) rendition.prev();
+      } else {
+        // Swipe left - go to next page
+        if (rendition) rendition.next();
+      }
+    }
+  }
 }
 
 // ============================================
@@ -557,6 +615,18 @@ async function loadEPUB(filePath) {
     settingsManager.applyToRenderer(rendition);
     settingsManager.applyTheme(rendition);
     
+    // Apply column layout
+    const columnLayout = settingsManager.get('columnLayout') || 'single';
+    if (columnLayout === 'double') {
+      rendition.spread('always');
+    } else {
+      rendition.spread('none');
+    }
+    
+    // Show navigation arrows
+    document.getElementById('navArrowLeft').classList.remove('hidden');
+    document.getElementById('navArrowRight').classList.remove('hidden');
+    
     // Load table of contents
     console.log('Loading table of contents');
     await loadTableOfContents();
@@ -566,8 +636,12 @@ async function loadEPUB(filePath) {
     await generateBookIdentifier();
     await loadHighlights();
     
-    // Apply highlights to rendition
-    applyHighlights();
+    // Apply highlights to rendition (will be reapplied on each page via relocated event)
+    setTimeout(() => {
+      applyHighlights();
+      // Inject CSS for highlighted text prominence
+      injectHighlightStyles();
+    }, 200);
     
     // Set up text selection handler
     rendition.on('selected', handleTextSelection);
@@ -875,6 +949,15 @@ function onLocationChange(location) {
     currentLocationCfi = location.start.cfi;
     settingsManager.set('lastLocation', currentLocationCfi);
     settingsManager.save();
+    
+    // Reapply highlights when page changes (fixes highlights disappearing on navigation)
+    if (highlights && highlights.length > 0) {
+      // Small delay to ensure page is rendered
+      setTimeout(() => {
+        applyHighlights();
+        injectHighlightStyles();
+      }, 100);
+    }
     
     // Save reading progress to library if book is in library
     if (currentBookPath) {
@@ -1470,16 +1553,89 @@ function togglePageAnimation(e) {
   settingsManager.save();
 }
 
-function resetSettings() {
-  if (confirm('Reset all settings to defaults?')) {
+function changeColumnLayout(e) {
+  const layout = e.target.value;
+  settingsManager.set('columnLayout', layout);
+  
+  if (rendition) {
+    if (layout === 'double') {
+      rendition.spread('always'); // Always show two pages
+    } else {
+      rendition.spread('none'); // Single page
+    }
+  }
+  settingsManager.save();
+}
+
+function changeTextAlignment(e) {
+  const alignment = e.target.value;
+  settingsManager.set('textAlignment', alignment);
+  
+  if (rendition) {
+    rendition.themes.override('text-align', alignment);
+  }
+  settingsManager.save();
+}
+
+function resetAllSettings() {
+  if (confirm('Reset all settings to defaults? This will reset font, theme, margins, spacing, layout, and all other settings.')) {
     settingsManager.reset();
     updateUIFromSettings();
     if (rendition) {
       settingsManager.applyToRenderer(rendition);
       settingsManager.applyTheme(rendition);
+      
+      // Reapply column layout
+      const layout = settingsManager.get('columnLayout');
+      if (layout === 'double') {
+        rendition.spread('always');
+      } else {
+        rendition.spread('none');
+      }
     }
     settingsManager.save();
   }
+}
+
+function resetIndividualSetting(settingKey) {
+  const defaultValue = settingsManager.defaults[settingKey];
+  settingsManager.set(settingKey, defaultValue);
+  
+  // Update UI
+  if (settingKey === 'lineSpacing') {
+    document.getElementById('lineSpacingSlider').value = defaultValue;
+    document.getElementById('lineSpacingValue').textContent = defaultValue.toFixed(1);
+    if (rendition) {
+      rendition.themes.override('line-height', defaultValue);
+    }
+  } else if (settingKey === 'marginSize') {
+    document.getElementById('marginSlider').value = defaultValue;
+    document.getElementById('marginValue').textContent = defaultValue + 'px';
+    if (rendition) {
+      rendition.themes.override('padding', `${defaultValue}px`);
+    }
+  } else if (settingKey === 'columnLayout') {
+    document.getElementById('columnLayoutSelect').value = defaultValue;
+    if (rendition) {
+      if (defaultValue === 'double') {
+        rendition.spread('always');
+      } else {
+        rendition.spread('none');
+      }
+    }
+  } else if (settingKey === 'textAlignment') {
+    document.getElementById('textAlignmentSelect').value = defaultValue;
+    if (rendition) {
+      rendition.themes.override('text-align', defaultValue);
+    }
+  }
+  
+  settingsManager.save();
+}
+
+function resetSettings() {
+  // Legacy function - redirect to resetAllSettings
+  resetAllSettings();
 }
 
 function updateUIFromSettings() {
@@ -1490,6 +1646,8 @@ function updateUIFromSettings() {
   document.getElementById('lineSpacingValue').textContent = settingsManager.get('lineSpacing').toFixed(1);
   document.getElementById('marginSlider').value = settingsManager.get('marginSize');
   document.getElementById('marginValue').textContent = settingsManager.get('marginSize') + 'px';
+  document.getElementById('columnLayoutSelect').value = settingsManager.get('columnLayout') || 'single';
+  document.getElementById('textAlignmentSelect').value = settingsManager.get('textAlignment') || 'justify';
   document.getElementById('mouseWheelToggle').checked = settingsManager.get('mouseWheelNav');
   document.getElementById('animationToggle').checked = settingsManager.get('pageAnimation');
   
@@ -1579,13 +1737,15 @@ async function generateBookIdentifier() {
     const metadata = await book.loaded.metadata;
     // Try to use ISBN if available
     if (metadata.identifier) {
-      bookIdentifier = metadata.identifier;
+      // Sanitize identifier - replace invalid filename characters
+      bookIdentifier = metadata.identifier.replace(/[<>:"/\\|?*]/g, '_');
     } else {
       // Fallback to title + author
       const title = metadata.title || 'unknown';
       const author = metadata.creator || 'unknown';
       bookIdentifier = `${title}-${author}`.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase();
     }
+    console.log(`Book identifier generated: ${bookIdentifier}`);
   } catch (error) {
     console.error('Error generating book identifier:', error);
     bookIdentifier = 'unknown-book-' + Date.now();
@@ -1597,8 +1757,9 @@ async function generateBookIdentifier() {
  */
 async function loadHighlights() {
   try {
+    console.log(`Loading highlights for book: ${bookIdentifier}`);
     highlights = await window.electronAPI.loadHighlights(bookIdentifier);
-    console.log(`Loaded ${highlights.length} highlights`);
+    console.log(`Loaded ${highlights.length} highlights:`, highlights);
     updateHighlightsList();
   } catch (error) {
     console.error('Error loading highlights:', error);
@@ -1611,10 +1772,16 @@ async function loadHighlights() {
  */
 async function saveHighlightsToFile() {
   try {
-    await window.electronAPI.saveHighlights(bookIdentifier, highlights);
-    console.log('Highlights saved successfully');
+    console.log(`Saving ${highlights.length} highlights for book: ${bookIdentifier}`);
+    const result = await window.electronAPI.saveHighlights(bookIdentifier, highlights);
+    if (result) {
+      console.log('Highlights saved successfully');
+    } else {
+      console.error('Failed to save highlights - main process returned false');
+    }
   } catch (error) {
-    console.error('Error saving highlights:', error);
+    console.error('Error saving highlights - exception thrown:', error);
+    alert(`Failed to save highlights: ${error.message}\n\nHighlights will be lost when you close the book.`);
   }
 }
 
@@ -1627,24 +1794,39 @@ function applyHighlights() {
   // Remove all existing highlights first
   rendition.annotations.remove(null, 'highlight');
   
-  // Apply each highlight
+  // Apply each highlight with VERY prominent colors like Kindle/Calibre (0.7 opacity, vibrant colors)
   highlights.forEach(highlight => {
     const colorMap = {
-      yellow: 'rgba(255, 235, 59, 0.3)',
-      green: 'rgba(139, 195, 74, 0.3)',
-      blue: 'rgba(100, 181, 246, 0.3)',
-      pink: 'rgba(244, 143, 177, 0.3)',
-      orange: 'rgba(255, 183, 77, 0.3)'
+      yellow: 'rgba(255, 245, 0, 0.5)',     // Bright yellow like Kindle
+      green: 'rgba(102, 255, 102, 0.5)',    // Bright green
+      blue: 'rgba(102, 178, 255, 0.5)',     // Bright blue
+      pink: 'rgba(255, 153, 204, 0.5)',     // Bright pink
+      orange: 'rgba(255, 178, 102, 0.5)'    // Bright orange
     };
     
+    // epub.js highlight API: highlight(cfiRange, data, cb, className, styles)
     rendition.annotations.highlight(
       highlight.cfiRange,
       { id: highlight.id },
-      null,
-      null,
-      { fill: colorMap[highlight.color] || colorMap.yellow }
+      null, // callback
+      'lapbook-highlight', // className for styling
+      { 
+        fill: colorMap[highlight.color] || colorMap.yellow,
+        'fill-opacity': '0.5',
+        'mix-blend-mode': 'multiply', // Better blending with text
+        'pointer-events': 'none' // Allow text selection through the highlight
+      }
     );
   });
+}
+
+/**
+ * Inject CSS to make highlighted text more prominent
+ * NOTE: Disabled - user prefers default text styling
+ */
+function injectHighlightStyles() {
+  // Disabled - keeping highlights with background color only
+  return;
 }
 
 /**
@@ -1652,6 +1834,7 @@ function applyHighlights() {
  */
 let selectedText = '';
 let contextMenuTimeout = null;
+let clickedHighlightId = null; // Track if user clicked on existing highlight
 
 function handleTextSelection(cfiRange, contents) {
   selectedCfiRange = cfiRange;
@@ -1661,12 +1844,20 @@ function handleTextSelection(cfiRange, contents) {
   selectedText = selection ? selection.toString().trim() : '';
   
   if (selectedText) {
-    // Get selection position
+    // Get selection position relative to viewport
     const range = selection.getRangeAt(0);
     const rect = range.getBoundingClientRect();
     
+    // Get iframe position
+    const iframe = document.querySelector('#viewer iframe');
+    const iframeRect = iframe ? iframe.getBoundingClientRect() : { left: 0, top: 0 };
+    
+    // Calculate absolute position (iframe position + selection position within iframe)
+    const absoluteX = iframeRect.left + rect.right;
+    const absoluteY = iframeRect.top + rect.top;
+    
     // Show context menu near selection
-    showContextMenu(rect.right + 10, rect.top);
+    showContextMenu(absoluteX + 10, absoluteY);
   } else {
     hideContextMenu();
   }
@@ -1677,6 +1868,31 @@ function handleTextSelection(cfiRange, contents) {
  */
 function showContextMenu(x, y) {
   const menu = document.getElementById('textContextMenu');
+  
+  // Check if we clicked on an existing highlight
+  const existingHighlight = highlights.find(h => h.cfiRange === selectedCfiRange);
+  
+  if (existingHighlight) {
+    clickedHighlightId = existingHighlight.id;
+    // Show "Delete Highlight" option by modifying menu dynamically
+    let deleteBtn = document.getElementById('contextDeleteHighlightBtn');
+    if (!deleteBtn) {
+      deleteBtn = document.createElement('button');
+      deleteBtn.id = 'contextDeleteHighlightBtn';
+      deleteBtn.className = 'btn';
+      deleteBtn.innerHTML = '<span class="icon">🗑️</span> Delete Highlight';
+      deleteBtn.addEventListener('click', deleteClickedHighlight);
+      menu.appendChild(deleteBtn);
+    }
+    deleteBtn.classList.remove('hidden');
+  } else {
+    clickedHighlightId = null;
+    const deleteBtn = document.getElementById('contextDeleteHighlightBtn');
+    if (deleteBtn) {
+      deleteBtn.classList.add('hidden');
+    }
+  }
+  
   menu.classList.remove('hidden');
   
   // Position menu
@@ -1691,12 +1907,29 @@ function showContextMenu(x, y) {
   if (rect.bottom > window.innerHeight) {
     menu.style.top = `${window.innerHeight - rect.height - 10}px`;
   }
+  if (rect.left < 0) {
+    menu.style.left = '10px';
+  }
+  if (rect.top < 0) {
+    menu.style.top = '10px';
+  }
   
   // Auto-hide after 10 seconds
   if (contextMenuTimeout) clearTimeout(contextMenuTimeout);
   contextMenuTimeout = setTimeout(() => {
     hideContextMenu();
   }, 10000);
+}
+
+/**
+ * Delete the highlight that was clicked
+ */
+async function deleteClickedHighlight() {
+  if (!clickedHighlightId) return;
+  
+  await deleteHighlight(clickedHighlightId);
+  hideContextMenu();
+  clickedHighlightId = null;
 }
 
 /**
@@ -1951,17 +2184,27 @@ function updateHighlightsList() {
 async function deleteHighlight(highlightId) {
   if (!confirm('Delete this highlight?')) return;
   
+  console.log('Deleting highlight:', highlightId);
+  
   // Remove from array
   highlights = highlights.filter(h => h.id !== highlightId);
   
   // Save to file
   await saveHighlightsToFile();
   
-  // Reapply highlights
+  // Clear all annotations
+  if (rendition && rendition.annotations) {
+    rendition.annotations.remove(null, 'highlight');
+  }
+  
+  // Reapply remaining highlights
   applyHighlights();
   
   // Update UI
   updateHighlightsList();
+  
+  // Note: Visual update may require turning the page due to epub.js limitations
+  console.log('Highlight deleted. Turn the page to see the change.');
 }
 
 // ============================================
