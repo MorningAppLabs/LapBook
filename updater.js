@@ -80,13 +80,16 @@ function checkForUpdates(mainWindow, showNoUpdateDialog = false) {
                 type: 'info',
                 title: 'Update Available',
                 message: `A new version of LapBook is available!`,
-                detail: `Current version: ${currentVersion}\nNew version: ${latestVersion}\n\n${release.name}\n\nWould you like to download it?`,
-                buttons: ['Download Update', 'Later'],
+                detail: `Current version: ${currentVersion}\nNew version: ${latestVersion}\n\n${release.name}\n\nThe update will download automatically and save to your Downloads folder.`,
+                buttons: ['Download Now', 'View Release Page', 'Later'],
                 defaultId: 0,
-                cancelId: 1
+                cancelId: 2
               });
 
               if (response === 0) {
+                // Download the installer (don't await - let it run in background)
+                downloadUpdate(release, mainWindow);
+              } else if (response === 1) {
                 // Open release page in browser
                 shell.openExternal(release.html_url);
               }
@@ -129,6 +132,85 @@ function checkForUpdates(mainWindow, showNoUpdateDialog = false) {
 
     req.end();
   });
+}
+
+/**
+ * Download update installer
+ */
+async function downloadUpdate(release, mainWindow) {
+  try {
+    // Find the .exe asset in the release
+    const asset = release.assets.find(a => a.name.endsWith('.exe'));
+    
+    if (!asset) {
+      dialog.showMessageBox(mainWindow, {
+        type: 'error',
+        title: 'Download Failed',
+        message: 'Could not find installer in release',
+        detail: 'Please download manually from the releases page.'
+      });
+      shell.openExternal(release.html_url);
+      return;
+    }
+
+    // Get downloads folder path
+    const downloadsPath = app.getPath('downloads');
+    const filePath = path.join(downloadsPath, asset.name);
+
+    // Show download progress dialog
+    dialog.showMessageBox(mainWindow, {
+      type: 'info',
+      title: 'Downloading Update',
+      message: `Downloading ${asset.name}...`,
+      detail: `Size: ${(asset.size / 1024 / 1024).toFixed(2)} MB\n\nThe file will be saved to your Downloads folder.`,
+      buttons: ['OK']
+    });
+
+    // Download file
+    const file = fs.createWriteStream(filePath);
+    
+    https.get(asset.browser_download_url, {
+      headers: {
+        'User-Agent': 'LapBook-Updater'
+      }
+    }, (response) => {
+      response.pipe(file);
+      
+      file.on('finish', () => {
+        file.close();
+        
+        // Show completion dialog
+        const result = dialog.showMessageBoxSync(mainWindow, {
+          type: 'info',
+          title: 'Download Complete',
+          message: 'Update downloaded successfully!',
+          detail: `The installer has been saved to:\n${filePath}\n\nWould you like to open the Downloads folder?`,
+          buttons: ['Open Downloads Folder', 'Close']
+        });
+
+        if (result === 0) {
+          shell.showItemInFolder(filePath);
+        }
+      });
+    }).on('error', (err) => {
+      fs.unlink(filePath, () => {}); // Delete partial file
+      dialog.showMessageBox(mainWindow, {
+        type: 'error',
+        title: 'Download Failed',
+        message: 'Failed to download update',
+        detail: err.message
+      });
+    });
+
+  } catch (error) {
+    console.error('Error downloading update:', error);
+    dialog.showMessageBox(mainWindow, {
+      type: 'error',
+      title: 'Download Error',
+      message: 'An error occurred while downloading',
+      detail: error.message
+    });
+  }
 }
 
 /**

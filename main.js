@@ -246,16 +246,21 @@ ipcMain.handle('settings:save', async (event, settings) => {
 // Handle highlights operations
 ipcMain.handle('highlights:load', async (event, bookIdentifier) => {
   try {
+    console.log('[Main] Loading highlights for:', bookIdentifier);
     const highlightsDir = path.join(app.getPath('userData'), 'highlights');
     if (!fs.existsSync(highlightsDir)) {
       fs.mkdirSync(highlightsDir, { recursive: true });
     }
     
     const highlightsPath = path.join(highlightsDir, `${bookIdentifier}.json`);
+    console.log('[Main] Highlights path:', highlightsPath);
     if (fs.existsSync(highlightsPath)) {
       const data = fs.readFileSync(highlightsPath, 'utf8');
-      return JSON.parse(data);
+      const parsed = JSON.parse(data);
+      console.log(`[Main] Loaded ${parsed.length} highlights`);
+      return parsed;
     }
+    console.log('[Main] No highlights file found');
     return [];
   } catch (error) {
     console.error('Error loading highlights:', error);
@@ -265,17 +270,58 @@ ipcMain.handle('highlights:load', async (event, bookIdentifier) => {
 
 ipcMain.handle('highlights:save', async (event, bookIdentifier, highlights) => {
   try {
-    const highlightsDir = path.join(app.getPath('userData'), 'highlights');
-    if (!fs.existsSync(highlightsDir)) {
+    console.log(`[Main] Saving ${highlights.length} highlights for:`, bookIdentifier);
+    const userDataPath = app.getPath('userData');
+    const highlightsDir = path.join(userDataPath, 'highlights');
+    
+    console.log('[Main] User data path:', userDataPath);
+    console.log('[Main] Highlights directory:', highlightsDir);
+    
+    // Check if parent directory exists
+    console.log('[Main] Checking if user data path exists:', fs.existsSync(userDataPath));
+    
+    // Always try to create directory (won't fail if exists)
+    try {
       fs.mkdirSync(highlightsDir, { recursive: true });
+      console.log('[Main] mkdirSync completed without error');
+    } catch (mkdirError) {
+      console.error('[Main] mkdirSync failed:', mkdirError);
+      throw mkdirError;
+    }
+    
+    // Verify directory exists after creation
+    const dirExists = fs.existsSync(highlightsDir);
+    console.log('[Main] Directory exists after creation?', dirExists);
+    
+    if (!dirExists) {
+      // Try reading directory to see what's there
+      try {
+        const parentContents = fs.readdirSync(userDataPath);
+        console.log('[Main] Contents of parent directory:', parentContents);
+      } catch (e) {
+        console.log('[Main] Could not read parent directory:', e.message);
+      }
+      throw new Error(`Directory creation failed silently: ${highlightsDir}`);
     }
     
     const highlightsPath = path.join(highlightsDir, `${bookIdentifier}.json`);
+    console.log('[Main] Writing to file:', highlightsPath);
+    
+    // Try writing file
     fs.writeFileSync(highlightsPath, JSON.stringify(highlights, null, 2), 'utf8');
+    console.log('[Main] File written successfully');
+    
+    // Verify file exists
+    if (fs.existsSync(highlightsPath)) {
+      console.log('[Main] File verified to exist');
+    } else {
+      console.log('[Main] WARNING: File does not exist after write!');
+    }
+    
     return true;
   } catch (error) {
-    console.error('Error saving highlights:', error);
-    return false;
+    console.error('[Main] Error saving highlights:', error);
+    throw error; // Re-throw so renderer knows it failed
   }
 });
 

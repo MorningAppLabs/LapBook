@@ -12,6 +12,8 @@ class SettingsManager {
       lineSpacing: 1.6,
       marginSize: 50,
       theme: 'sepia', // white, sepia, dark
+      columnLayout: 'single', // single or double
+      textAlignment: 'justify', // left, right, justify
       mouseWheelNav: true, // Enable mouse wheel page navigation
       pageAnimation: true, // Enable page turn animations
       lastBookPath: null,
@@ -95,6 +97,9 @@ class SettingsManager {
     // Apply margins
     const margin = this.settings.marginSize;
     rendition.themes.override('padding', `${margin}px`);
+    
+    // Apply text alignment
+    rendition.themes.override('text-align', this.settings.textAlignment);
   }
 
   /**
